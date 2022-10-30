@@ -5,7 +5,7 @@ namespace SimpleBanking.Web.Services.Contracts
 {
     public interface ITransactionService
     {
-        TransactionResult Transfer(ApplicationUser debtor, ApplicationUser creditor, decimal amount);
-        ICollection<TransactionHistory> GetTransactionHistory(ApplicationUser user);
+        TransactionResult Transfer(string debtorEmail, string creditorEmail, decimal amount);
+        ICollection<TransactionHistory> GetTransactionHistory(string userEmail);
     }
 }

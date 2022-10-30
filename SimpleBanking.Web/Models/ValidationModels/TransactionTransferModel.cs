@@ -9,6 +9,6 @@ namespace SimpleBanking.Web.Models.ValidationModels
         public decimal Amount { get; set; }
 
         [Required(ErrorMessage = ConstantMessages.ReceiverNotFound)]
-        public string DebtorUserName { get; set; }
+        public string DebtorEmail { get; set; }
     }
 }

@@ -16,12 +16,22 @@ namespace SimpleBanking.Web.Services
             _context = context;
         }
 
-        public TransactionResult Transfer(ApplicationUser debtor, ApplicationUser creditor, decimal amount)
+        public TransactionResult Transfer(string debtorEmail, string creditorEmail, decimal amount)
         {
+            var creditor = _context.Users.FirstOrDefault(x => x.Email == creditorEmail);
+            var debtor = _context.Users.FirstOrDefault(x => x.Email == debtorEmail);
+
+            if (creditor == null)
+                return new TransactionResult { Success = false, Message = ConstantMessages.CreditorNotFound, NewBalance = 0.00M };
+            if (debtor == null)
+                return new TransactionResult { Success = false, Message = ConstantMessages.ReceiverNotFound, NewBalance = creditor.Balance };
+
+            // Force update entries to ensure the balance is correct, considering executing multiple transfers at the same time from different clients OR receiving funds at the same time while sending
+            _context.Entry(creditor).Reload();
+            _context.Entry(debtor).Reload();
+
             if (creditor.Balance < amount)
                 return new TransactionResult { Success = false, Message = ConstantMessages.InsufficentFunds, NewBalance = creditor.Balance };
-            if (!_context.Users.Contains(debtor))
-                return new TransactionResult { Success = false, Message = ConstantMessages.ReceiverNotFound, NewBalance = creditor.Balance };
 
             using var transaction = _context.Database.BeginTransaction();
             try
@@ -35,10 +45,12 @@ namespace SimpleBanking.Web.Services
                     Date = DateTime.UtcNow,
                 };
 
-                _context.Transactions.Add(transactionEntity);
                 creditor.Balance -= amount;
                 debtor.Balance += amount;
 
+                _context.Transactions.Add(transactionEntity);
+                _context.Update(creditor);
+                _context.Update(debtor);
                 _context.SaveChanges();
 
                 transaction.Commit();
@@ -52,11 +64,11 @@ namespace SimpleBanking.Web.Services
             return new TransactionResult { Success = true, Message = ConstantMessages.SuccessfulTransfer, NewBalance = creditor.Balance };
         }
 
-        public ICollection<TransactionHistory> GetTransactionHistory(ApplicationUser user)
+        public ICollection<TransactionHistory> GetTransactionHistory(string userEmail)
         {
             var transactions = new List<TransactionHistory>();
 
-            var dbUser = _context.Users.Where(x => x == user);
+            var dbUser = _context.Users.Where(x => x.Email == userEmail);
 
             var incomingTransfer = dbUser
                 .Include(x => x.TransfersIncoming)

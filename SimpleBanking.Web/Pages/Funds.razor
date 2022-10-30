@@ -46,118 +46,139 @@
 
 <PageTitle>Funds</PageTitle>
 
-<EditForm Model="@Model" OnValidSubmit="InitiateTransfer" OnInvalidSubmit="ClearResultMessage">
-    <DataAnnotationsValidator />
+@if (IsUserAuthenticated())
+{
 
-    <h5 style="text-align:center; font-weight:bold;">Balance: @result.NewBalance</h5>
-    <hr />
+    <EditForm Model="@Model" OnValidSubmit="InitiateTransfer" OnInvalidSubmit="ClearResultMessage">
+        <DataAnnotationsValidator />
 
-    <div class="label-input-wrapper">
-        <label class="label-input">Transfer Funds To:</label>
-        <input class="label-input" onchange="@SetDebtorEmail" placeholder="Search user.." type="text" list="user-search" />
-    </div>
-    <hr />
+        <h5 style="text-align:center; font-weight:bold;">Balance: @result.NewBalance</h5>
+        <hr />
 
-    <datalist id="user-search">
-        @if (userNames.Any())
-        {
-            @foreach (var email in userNames)
+        <div class="label-input-wrapper">
+            <label class="label-input">Transfer Funds To:</label>
+            <input class="label-input" onchange="@SetDebtorEmail" placeholder="Search user.." type="text" list="user-search" />
+        </div>
+        <hr />
+
+        <datalist id="user-search">
+            @if (userEmails.Any())
             {
-                <option value="@email">@email</option>
+                @foreach (var email in userEmails)
+                {
+                    <option value="@email">@email</option>
+                }
             }
-        }
-    </datalist>
+        </datalist>
 
-    <div class="label-input-wrapper">
-        <label class="label-input">Amount</label>
-        <input class="label-input" placeholder="Enter amount" onchange="@SetAmount" type="number" step=".01" pattern="^\d*(\.\d{0,2})?$" />
-    </div>
+        <div class="label-input-wrapper">
+            <label class="label-input">Amount</label>
+            <input class="label-input" placeholder="Enter amount" onchange="@SetAmount" type="number" step=".01" pattern="^\d*(\.\d{0,2})?$" />
+        </div>
 
-    <hr />
+        <hr />
 
-    <input class="input-btn" type="submit" value="Send" />
+        <input class="input-btn" type="submit" value="Send" />
 
-    <div class="custom-validation-summary">
-        <ValidationSummary />
-        <h5 style="color: @(result.Success ? "green" : "red")">@result.Message</h5>
-    </div>
-</EditForm>
+        <div class="custom-validation-summary">
+            <ValidationSummary />
+            <h5 style="color: @(result.Success ? "green" : "red")">@result.Message</h5>
+        </div>
+    </EditForm>
 
-<h4 style="text-align:center;">Transaction History</h4>
-<table class="table">
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Amount</th>
-            <th>Type</th>
-            <th>Date</th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var transaction in transactions)
-        {
+    <h4 style="text-align:center;">Transaction History</h4>
+    <table class="table">
+        <thead>
             <tr>
-                <td>@transaction.Id</td>
-                <td style="color: @(transaction.IsIncomingTransfer ? "green" : "red")">@transaction.Amount</td>
-                <td>@transaction.Type</td>
-                <td>@transaction.Date</td>
-                <td>@(transaction.IsIncomingTransfer ? "Incoming" : "Outgoing")</td>
+                <th>ID</th>
+                <th>Amount</th>
+                <th>Type</th>
+                <th>Date</th>
+                <th></th>
             </tr>
-        }
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            @foreach (var transaction in transactions)
+            {
+                <tr>
+                    <td>@transaction.Id</td>
+                    <td style="color: @(transaction.IsIncomingTransfer ? "green" : "red")">@transaction.Amount</td>
+                    <td>@transaction.Type</td>
+                    <td>@transaction.Date</td>
+                    <td>@(transaction.IsIncomingTransfer ? "Incoming" : "Outgoing")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+     <h5 style="color: red;">Please, log-in first</h5>
+}
+
 
 @code {
+    private AuthenticationState authState;
     private TransactionTransferModel Model = new TransactionTransferModel();
 
-    private ApplicationUser creditor = null;
-    private string debtorName = string.Empty;
+    private string creditorEmail = string.Empty;
     private decimal? amount = null;
     private TransactionResult result = new TransactionResult { Success = false, Message = string.Empty, NewBalance = 0.00M };
 
-    private ICollection<string> userNames = new HashSet<string>();
+    private ICollection<string> userEmails = new HashSet<string>();
     private ICollection<TransactionHistory> transactions = new HashSet<TransactionHistory>();
 
     protected async override Task OnInitializedAsync()
     {
-        var authState = await GetAuthenticationStateAsync.GetAuthenticationStateAsync();
-        var creditorName = authState.User.Identity.Name;
-        creditor = await UserManager.FindByNameAsync(creditorName);
+        authState = await GetAuthenticationStateAsync.GetAuthenticationStateAsync();
+
+        if (!IsUserAuthenticated())
+        {
+            return;
+        }
+
+        var creditorName = authState.User.Identity!.Name;
+        var creditor = await UserManager.FindByNameAsync(creditorName);
+        creditorEmail = creditor.Email;
 
         result.NewBalance = creditor.Balance;
 
-        userNames = UserManager.Users.Where(x => x.UserName != creditorName).Select(x => x.UserName).ToList();
-        transactions = TransactionService.GetTransactionHistory(creditor);
+        userEmails = UserManager.Users.Where(x => x.Email != creditorName).Select(x => x.Email).ToList();
+        transactions = TransactionService.GetTransactionHistory(creditorEmail);
 
-        if (!userNames.Any())
+        if (!userEmails.Any())
         {
             result.Message = ConstantMessages.NoUsers;
         }
     }
 
-    private async Task SetDebtorEmail(ChangeEventArgs e)
+    private void SetDebtorEmail(ChangeEventArgs e)
     {
-        Model.DebtorUserName = e.Value.ToString();
+        Model.DebtorEmail = e.Value.ToString();
     }
 
-    private async Task SetAmount(ChangeEventArgs e)
+    private void SetAmount(ChangeEventArgs e)
     {
         Model.Amount = decimal.Parse(e.Value.ToString());
     }
 
-    private async Task InitiateTransfer()
+    private void InitiateTransfer()
     {
-        var debtor = await UserManager.FindByNameAsync(Model.DebtorUserName);
+        result = TransactionService.Transfer(Model.DebtorEmail, creditorEmail, Model.Amount);
+        transactions = TransactionService.GetTransactionHistory(creditorEmail);
 
-        result = TransactionService.Transfer(debtor, creditor, Model.Amount);
         Model = new TransactionTransferModel();
-
-        transactions = TransactionService.GetTransactionHistory(creditor);
     }
 
-    private async Task ClearResultMessage()
+    private void ClearResultMessage()
     {
         result.Message = string.Empty;
+    }
+
+    private bool IsUserAuthenticated()
+    {
+        return (authState.User != null &&
+                authState.User.Identity != null &&
+                authState.User.Identity.IsAuthenticated);
     }
 }
