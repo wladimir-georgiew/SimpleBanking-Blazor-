@@ -1,0 +1,163 @@
+﻿@page "/funds"
+@using Microsoft.AspNetCore.Identity
+@using SimpleBanking.Web.Data.Models
+@using SimpleBanking.Web.Models
+@using SimpleBanking.Web.Models.ValidationModels
+@using SimpleBanking.Web.Services.Contracts
+@inject AuthenticationStateProvider GetAuthenticationStateAsync
+@inject UserManager<ApplicationUser> UserManager
+@inject ITransactionService TransactionService
+
+<style>
+    .custom-validation-summary {
+        font-size: 1.2rem;
+        margin-top: 20px;
+    }
+
+        .custom-validation-summary > ul {
+            list-style-type: none;
+            padding-left: 0px;
+        }
+
+    .label-input {
+        font-size: large;
+    }
+
+    .label-input-wrapper {
+        display: flex;
+        justify-content: space-between;
+        width: 35%;
+    }
+
+    .input-btn {
+        padding: 5px 15px;
+        font-size: 24px;
+        cursor: pointer;
+        border-radius: 15px;
+        border-bottom-left-radius: 0;
+        transition: all 0.3s;
+        background-color: white;
+    }
+
+        .input-btn:hover {
+            border-radius: 0px;
+        }
+</style>
+
+<PageTitle>Funds</PageTitle>
+
+<EditForm Model="@Model" OnValidSubmit="InitiateTransfer" OnInvalidSubmit="ClearResultMessage">
+    <DataAnnotationsValidator />
+
+    <h5 style="text-align:center; font-weight:bold;">Balance: @result.NewBalance</h5>
+    <hr />
+
+    <div class="label-input-wrapper">
+        <label class="label-input">Transfer Funds To:</label>
+        <input class="label-input" onchange="@SetDebtorEmail" placeholder="Search user.." type="text" list="user-search" />
+    </div>
+    <hr />
+
+    <datalist id="user-search">
+        @if (userNames.Any())
+        {
+            @foreach (var email in userNames)
+            {
+                <option value="@email">@email</option>
+            }
+        }
+    </datalist>
+
+    <div class="label-input-wrapper">
+        <label class="label-input">Amount</label>
+        <input class="label-input" placeholder="Enter amount" onchange="@SetAmount" type="number" step=".01" pattern="^\d*(\.\d{0,2})?$" />
+    </div>
+
+    <hr />
+
+    <input class="input-btn" type="submit" value="Send" />
+
+    <div class="custom-validation-summary">
+        <ValidationSummary />
+        <h5 style="color: @(result.Success ? "green" : "red")">@result.Message</h5>
+    </div>
+</EditForm>
+
+<h4 style="text-align:center;">Transaction History</h4>
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Amount</th>
+            <th>Type</th>
+            <th>Date</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var transaction in transactions)
+        {
+            <tr>
+                <td>@transaction.Id</td>
+                <td style="color: @(transaction.IsIncomingTransfer ? "green" : "red")">@transaction.Amount</td>
+                <td>@transaction.Type</td>
+                <td>@transaction.Date</td>
+                <td>@(transaction.IsIncomingTransfer ? "Incoming" : "Outgoing")</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    private TransactionTransferModel Model = new TransactionTransferModel();
+
+    private ApplicationUser creditor = null;
+    private string debtorName = string.Empty;
+    private decimal? amount = null;
+    private TransactionResult result = new TransactionResult { Success = false, Message = string.Empty, NewBalance = 0.00M };
+
+    private ICollection<string> userNames = new HashSet<string>();
+    private ICollection<TransactionHistory> transactions = new HashSet<TransactionHistory>();
+
+    protected async override Task OnInitializedAsync()
+    {
+        var authState = await GetAuthenticationStateAsync.GetAuthenticationStateAsync();
+        var creditorName = authState.User.Identity.Name;
+        creditor = await UserManager.FindByNameAsync(creditorName);
+
+        result.NewBalance = creditor.Balance;
+
+        userNames = UserManager.Users.Where(x => x.UserName != creditorName).Select(x => x.UserName).ToList();
+        transactions = TransactionService.GetTransactionHistory(creditor);
+
+        if (!userNames.Any())
+        {
+            result.Message = ConstantMessages.NoUsers;
+        }
+    }
+
+    private async Task SetDebtorEmail(ChangeEventArgs e)
+    {
+        Model.DebtorUserName = e.Value.ToString();
+    }
+
+    private async Task SetAmount(ChangeEventArgs e)
+    {
+        Model.Amount = decimal.Parse(e.Value.ToString());
+    }
+
+    private async Task InitiateTransfer()
+    {
+        var debtor = await UserManager.FindByNameAsync(Model.DebtorUserName);
+
+        result = TransactionService.Transfer(debtor, creditor, Model.Amount);
+        Model = new TransactionTransferModel();
+
+        transactions = TransactionService.GetTransactionHistory(creditor);
+    }
+
+    private async Task ClearResultMessage()
+    {
+        result.Message = string.Empty;
+    }
+}
