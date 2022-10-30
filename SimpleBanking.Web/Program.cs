@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI;
 using Microsoft.EntityFrameworkCore;
+using MudBlazor.Services;
 using SimpleBanking.Web.Areas.Identity;
 using SimpleBanking.Web.Data;
 using SimpleBanking.Web.Data.Models;
@@ -36,6 +37,7 @@ namespace SimpleBanking.Web
             builder.Services.AddScoped<AuthenticationStateProvider, RevalidatingIdentityAuthenticationStateProvider<ApplicationUser>>();
             builder.Services.AddSingleton<WeatherForecastService>();
             builder.Services.AddTransient<ITransactionService, TransactionService>();
+            builder.Services.AddMudServices();
 
             var app = builder.Build();
 

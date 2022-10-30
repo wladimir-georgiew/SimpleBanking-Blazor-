@@ -1,5 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using SimpleBanking.Web.Data;
+﻿using SimpleBanking.Web.Data;
 using SimpleBanking.Web.Data.Enums;
 using SimpleBanking.Web.Data.Models;
 using SimpleBanking.Web.Models;
@@ -64,48 +63,42 @@ namespace SimpleBanking.Web.Services
             return new TransactionResult { Success = true, Message = ConstantMessages.SuccessfulTransfer, NewBalance = creditor.Balance };
         }
 
-        public ICollection<TransactionHistory> GetTransactionHistory(string userEmail)
+        public ICollection<TransactionHistory> GetTransactionHistory(string userEmail, int pageNumber, int pageCount)
         {
-            var transactions = new List<TransactionHistory>();
+            var user = _context.Users.First(x => x.Email == userEmail);
 
-            var dbUser = _context.Users.Where(x => x.Email == userEmail);
+            var transactions = _context.Transactions
+                .Where(x => x.DebtorId == user.Id || x.CreditorId == user.Id)
+                .OrderByDescending(x => x.Date)
+                .Skip(pageCount * (pageNumber - 1))
+                .Take(pageCount)
+                .Select(x => GetTransactionHistoryFromTransaction(x, x.DebtorId == user.Id ? true : false))
+                .ToArray();
 
-            var incomingTransfer = dbUser
-                .Include(x => x.TransfersIncoming)
-                .FirstOrDefault()
-                ?.TransfersIncoming;
-
-            var outgoingTransfer = dbUser
-               .Include(x => x.TransfersOutgoing)
-               .FirstOrDefault()
-               ?.TransfersOutgoing;
-
-            foreach (var transfer in incomingTransfer!)
-            {
-                var model = GetTransactionHistoryFromTransaction(transfer);
-                model.IsIncomingTransfer = true;
-
-                transactions.Add(model);
-            }
-            foreach (var transfer in outgoingTransfer!)
-            {
-                var model = GetTransactionHistoryFromTransaction(transfer);
-                model.IsIncomingTransfer = false;
-
-                transactions.Add(model);
-            }
-
-            return transactions.OrderByDescending(x => (DateTime.Parse(x.Date))).ToArray();
+            return transactions;
         }
 
-        private TransactionHistory GetTransactionHistoryFromTransaction(Transaction transaction)
+        public int GetTransactionsTotalPages(string userEmail, int pageCount)
+        {
+            var user = _context.Users.First(x => x.Email == userEmail);
+
+            var transactionsCount = _context.Transactions
+                .Where(x => x.DebtorId == user.Id || x.CreditorId == user.Id)
+                .Count();
+
+            var totalPages = (int)Math.Ceiling((double)transactionsCount / pageCount);
+            return totalPages;
+        }
+
+        private static TransactionHistory GetTransactionHistoryFromTransaction(Transaction transaction, bool isIncoming)
         {
             return new TransactionHistory
             {
                 Id = transaction.Id,
                 Amount = transaction.Amount,
                 Date = transaction.Date.ToString("g"),
-                Type = transaction.Type.ToString()
+                Type = transaction.Type.ToString(),
+                IsIncomingTransfer = isIncoming,
             };
         }
     }

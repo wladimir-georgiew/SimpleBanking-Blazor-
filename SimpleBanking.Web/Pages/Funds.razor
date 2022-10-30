@@ -19,6 +19,10 @@
             padding-left: 0px;
         }
 
+    .validation-message{
+        color: red;
+    }
+
     .label-input {
         font-size: large;
     }
@@ -36,7 +40,8 @@
         border-radius: 15px;
         border-bottom-left-radius: 0;
         transition: all 0.3s;
-        background-color: white;
+        background-color: #3a0647;
+        color:white;
     }
 
         .input-btn:hover {
@@ -73,7 +78,7 @@
 
         <div class="label-input-wrapper">
             <label class="label-input">Amount</label>
-            <input class="label-input" placeholder="Enter amount" onchange="@SetAmount" type="number" step=".01" pattern="^\d*(\.\d{0,2})?$" />
+            <input class="label-input" placeholder="Enter amount" onchange="@SetAmount" type="number" step=".01" pattern="^\d*(\.\d{0,2})?$" min="0.00"/>
         </div>
 
         <hr />
@@ -110,14 +115,22 @@
             }
         </tbody>
     </table>
+
+    <div style="text-align:center;">
+        <MudPagination Variant="Variant.Filled" Color="Color.Primary" Count="@totalPages" SelectedChanged="@OnPageChange" />
+    </div>
 }
 else
 {
-     <h5 style="color: red;">Please, log-in first</h5>
+    <h5 style="color: red;">Please, log-in first</h5>
 }
 
 
 @code {
+    private int totalPages = 1;
+    private int selectedPage = 1;
+    private int pageCount = 7;
+
     private AuthenticationState authState;
     private TransactionTransferModel Model = new TransactionTransferModel();
 
@@ -144,7 +157,8 @@ else
         result.NewBalance = creditor.Balance;
 
         userEmails = UserManager.Users.Where(x => x.Email != creditorName).Select(x => x.Email).ToList();
-        transactions = TransactionService.GetTransactionHistory(creditorEmail);
+        transactions = TransactionService.GetTransactionHistory(creditorEmail, 1, pageCount);
+        totalPages = TransactionService.GetTransactionsTotalPages(creditorEmail, pageCount);
 
         if (!userEmails.Any())
         {
@@ -165,7 +179,8 @@ else
     private void InitiateTransfer()
     {
         result = TransactionService.Transfer(Model.DebtorEmail, creditorEmail, Model.Amount);
-        transactions = TransactionService.GetTransactionHistory(creditorEmail);
+        transactions = TransactionService.GetTransactionHistory(creditorEmail, 1, pageCount);
+        totalPages = TransactionService.GetTransactionsTotalPages(creditorEmail, pageCount);
 
         Model = new TransactionTransferModel();
     }
@@ -180,5 +195,10 @@ else
         return (authState.User != null &&
                 authState.User.Identity != null &&
                 authState.User.Identity.IsAuthenticated);
+    }
+
+    private void OnPageChange(int pageNumber)
+    {
+        transactions = TransactionService.GetTransactionHistory(creditorEmail, pageNumber, pageCount);
     }
 }
