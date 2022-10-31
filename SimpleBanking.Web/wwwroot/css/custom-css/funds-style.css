@@ -1,0 +1,38 @@
+﻿.custom-validation-summary {
+    font-size: 1.2rem;
+    margin-top: 20px;
+}
+
+    .custom-validation-summary > ul {
+        list-style-type: none;
+        padding-left: 0px;
+    }
+
+.validation-message {
+    color: red;
+}
+
+.label-input {
+    font-size: large;
+}
+
+.label-input-wrapper {
+    display: flex;
+    justify-content: space-between;
+    width: 35%;
+}
+
+.input-btn {
+    padding: 5px 15px;
+    font-size: 24px;
+    cursor: pointer;
+    border-radius: 15px;
+    border-bottom-left-radius: 0;
+    transition: all 0.3s;
+    background-color: #3a0647;
+    color: white;
+}
+
+    .input-btn:hover {
+        border-radius: 0px;
+    }

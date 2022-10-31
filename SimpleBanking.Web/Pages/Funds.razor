@@ -8,56 +8,17 @@
 @inject UserManager<ApplicationUser> UserManager
 @inject ITransactionService TransactionService
 
-<style>
-    .custom-validation-summary {
-        font-size: 1.2rem;
-        margin-top: 20px;
-    }
-
-        .custom-validation-summary > ul {
-            list-style-type: none;
-            padding-left: 0px;
-        }
-
-    .validation-message{
-        color: red;
-    }
-
-    .label-input {
-        font-size: large;
-    }
-
-    .label-input-wrapper {
-        display: flex;
-        justify-content: space-between;
-        width: 35%;
-    }
-
-    .input-btn {
-        padding: 5px 15px;
-        font-size: 24px;
-        cursor: pointer;
-        border-radius: 15px;
-        border-bottom-left-radius: 0;
-        transition: all 0.3s;
-        background-color: #3a0647;
-        color:white;
-    }
-
-        .input-btn:hover {
-            border-radius: 0px;
-        }
-</style>
+<link href="css/custom-css/funds-style.css" rel="stylesheet"/>
 
 <PageTitle>Funds</PageTitle>
 
 @if (IsUserAuthenticated())
 {
 
-    <EditForm Model="@Model" OnValidSubmit="InitiateTransfer" OnInvalidSubmit="ClearResultMessage">
+    <EditForm Model="@_Model" OnInvalidSubmit="ClearResultMessage">
         <DataAnnotationsValidator />
 
-        <h5 style="text-align:center; font-weight:bold;">Balance: @result.NewBalance</h5>
+        <h5 style="text-align:center; font-weight:bold;">Balance: @_result.NewBalance</h5>
         <hr />
 
         <div class="label-input-wrapper">
@@ -67,9 +28,9 @@
         <hr />
 
         <datalist id="user-search">
-            @if (userEmails.Any())
+            @if (_userEmails.Any())
             {
-                @foreach (var email in userEmails)
+                @foreach (var email in _userEmails)
                 {
                     <option value="@email">@email</option>
                 }
@@ -83,11 +44,22 @@
 
         <hr />
 
-        <input class="input-btn" type="submit" value="Send" />
+        @*<input class="input-btn" type="submit" value="Send" />*@
+        <MudButton Disabled="@_processing" OnClick="InitiateTransfer" Variant="Variant.Filled" Color="Color.Primary" EndIcon="@Icons.Material.Filled.Send">
+            @if (_processing)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ms-2">Processing</MudText>
+            }
+            else
+            {
+                <MudText>Send</MudText>
+            }
+        </MudButton>
 
         <div class="custom-validation-summary">
             <ValidationSummary />
-            <h5 style="color: @(result.Success ? "green" : "red")">@result.Message</h5>
+            <h5 style="color: @(_result.Success ? "green" : "red")">@_result.Message</h5>
         </div>
     </EditForm>
 
@@ -103,7 +75,7 @@
             </tr>
         </thead>
         <tbody>
-            @foreach (var transaction in transactions)
+            @foreach (var transaction in _transactions)
             {
                 <tr>
                     <td>@transaction.Id</td>
@@ -117,7 +89,7 @@
     </table>
 
     <div style="text-align:center;">
-        <MudPagination Variant="Variant.Filled" Color="Color.Primary" Count="@totalPages" SelectedChanged="@OnPageChange" />
+        <MudPagination Variant="Variant.Filled" Color="Color.Primary" Count="@_totalPages" SelectedChanged="@OnPageChange" />
     </div>
 }
 else
@@ -127,78 +99,92 @@ else
 
 
 @code {
-    private int totalPages = 1;
-    private int selectedPage = 1;
-    private int pageCount = 7;
+    private bool _processing = false;
 
-    private AuthenticationState authState;
-    private TransactionTransferModel Model = new TransactionTransferModel();
+    // Pagination
+    private int _totalPages = 1;
+    private int _selectedPage = 1;
+    private int _pageCount = 7;
 
-    private string creditorEmail = string.Empty;
-    private decimal? amount = null;
-    private TransactionResult result = new TransactionResult { Success = false, Message = string.Empty, NewBalance = 0.00M };
+    // Auth
+    private AuthenticationState _authState;
 
-    private ICollection<string> userEmails = new HashSet<string>();
-    private ICollection<TransactionHistory> transactions = new HashSet<TransactionHistory>();
+    // Form
+    private TransactionTransferModel _Model = new TransactionTransferModel();
+    private string _creditorEmail = string.Empty;
+    private decimal? _amount = null;
+    private TransactionResult _result = new TransactionResult { Success = false, Message = string.Empty, NewBalance = 0.00M };
+
+    private ICollection<string> _userEmails = new HashSet<string>();
+    private ICollection<TransactionHistory> _transactions = new HashSet<TransactionHistory>();
 
     protected async override Task OnInitializedAsync()
     {
-        authState = await GetAuthenticationStateAsync.GetAuthenticationStateAsync();
+        _authState = await GetAuthenticationStateAsync.GetAuthenticationStateAsync();
 
         if (!IsUserAuthenticated())
         {
             return;
         }
 
-        var creditorName = authState.User.Identity!.Name;
+        var creditorName = _authState.User.Identity!.Name;
         var creditor = await UserManager.FindByNameAsync(creditorName);
-        creditorEmail = creditor.Email;
+        _creditorEmail = creditor.Email;
 
-        result.NewBalance = creditor.Balance;
+        _result.NewBalance = creditor.Balance;
 
-        userEmails = UserManager.Users.Where(x => x.Email != creditorName).Select(x => x.Email).ToList();
-        transactions = TransactionService.GetTransactionHistory(creditorEmail, 1, pageCount);
-        totalPages = TransactionService.GetTransactionsTotalPages(creditorEmail, pageCount);
+        _userEmails = UserManager.Users.Where(x => x.Email != creditorName).Select(x => x.Email).ToList();
+        _transactions = TransactionService.GetTransactionHistory(_creditorEmail, 1, _pageCount);
+        _totalPages = TransactionService.GetTransactionsTotalPages(_creditorEmail, _pageCount);
 
-        if (!userEmails.Any())
+        if (!_userEmails.Any())
         {
-            result.Message = ConstantMessages.NoUsers;
+            _result.Message = ConstantMessages.NoUsers;
         }
     }
 
     private void SetDebtorEmail(ChangeEventArgs e)
     {
-        Model.DebtorEmail = e.Value.ToString();
+        _Model.DebtorEmail = e.Value.ToString();
     }
 
     private void SetAmount(ChangeEventArgs e)
     {
-        Model.Amount = decimal.Parse(e.Value.ToString());
+        _Model.Amount = decimal.Parse(e.Value.ToString());
     }
 
-    private void InitiateTransfer()
+    async Task InitiateTransfer()
     {
-        result = TransactionService.Transfer(Model.DebtorEmail, creditorEmail, Model.Amount);
-        transactions = TransactionService.GetTransactionHistory(creditorEmail, 1, pageCount);
-        totalPages = TransactionService.GetTransactionsTotalPages(creditorEmail, pageCount);
+        _processing = true;
 
-        Model = new TransactionTransferModel();
+        await Task.Run(async() =>
+        {
+            _result = TransactionService.Transfer(_Model.DebtorEmail, _creditorEmail, _Model.Amount);
+            _transactions = TransactionService.GetTransactionHistory(_creditorEmail, _selectedPage, _pageCount);
+            _totalPages = TransactionService.GetTransactionsTotalPages(_creditorEmail, _pageCount);
+
+            _Model = new TransactionTransferModel();
+            await Task.Delay(1000);
+        });
+
+        _processing = false;
     }
 
     private void ClearResultMessage()
     {
-        result.Message = string.Empty;
+        _result.Message = string.Empty;
     }
 
     private bool IsUserAuthenticated()
     {
-        return (authState.User != null &&
-                authState.User.Identity != null &&
-                authState.User.Identity.IsAuthenticated);
+        return (_authState.User != null &&
+                _authState.User.Identity != null &&
+                _authState.User.Identity.IsAuthenticated);
     }
 
     private void OnPageChange(int pageNumber)
     {
-        transactions = TransactionService.GetTransactionHistory(creditorEmail, pageNumber, pageCount);
+        _selectedPage = pageNumber;
+        _transactions = TransactionService.GetTransactionHistory(_creditorEmail, pageNumber, _pageCount);
     }
 }
