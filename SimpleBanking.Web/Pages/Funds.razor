@@ -8,14 +8,14 @@
 @inject UserManager<ApplicationUser> UserManager
 @inject ITransactionService TransactionService
 
-<link href="css/custom-css/funds-style.css" rel="stylesheet"/>
+<link href="css/custom-css/funds-style.css" rel="stylesheet" />
 
 <PageTitle>Funds</PageTitle>
 
 @if (IsUserAuthenticated())
 {
 
-    <EditForm Model="@_Model" OnInvalidSubmit="ClearResultMessage">
+    <EditForm Model="@_InputModel" OnInvalidSubmit="ClearResultMessage">
         <DataAnnotationsValidator />
 
         <h5 style="text-align:center; font-weight:bold;">Balance: @_result.NewBalance</h5>
@@ -37,14 +37,10 @@
             }
         </datalist>
 
-        <div class="label-input-wrapper">
-            <label class="label-input">Amount</label>
-            <input class="label-input" placeholder="Enter amount" onchange="@SetAmount" type="number" step=".01" pattern="^\d*(\.\d{0,2})?$" min="0.00"/>
-        </div>
+        <MudTextField Class="label-input-wrapper" Placeholder="0.00" Format="F2" @bind-Value="_InputModel.Amount" Label="Amount" Variant="Variant.Text" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.AttachMoney" />
 
         <hr />
 
-        @*<input class="input-btn" type="submit" value="Send" />*@
         <MudButton Disabled="@_processing" OnClick="InitiateTransfer" Variant="Variant.Filled" Color="Color.Primary" EndIcon="@Icons.Material.Filled.Send">
             @if (_processing)
             {
@@ -110,9 +106,8 @@ else
     private AuthenticationState _authState;
 
     // Form
-    private TransactionTransferModel _Model = new TransactionTransferModel();
+    private TransactionTransferModel _InputModel = new TransactionTransferModel();
     private string _creditorEmail = string.Empty;
-    private decimal? _amount = null;
     private TransactionResult _result = new TransactionResult { Success = false, Message = string.Empty, NewBalance = 0.00M };
 
     private ICollection<string> _userEmails = new HashSet<string>();
@@ -145,25 +140,25 @@ else
 
     private void SetDebtorEmail(ChangeEventArgs e)
     {
-        _Model.DebtorEmail = e.Value.ToString();
-    }
-
-    private void SetAmount(ChangeEventArgs e)
-    {
-        _Model.Amount = decimal.Parse(e.Value.ToString());
+        _InputModel.DebtorEmail = e.Value.ToString();
     }
 
     async Task InitiateTransfer()
     {
         _processing = true;
 
-        await Task.Run(async() =>
+        await Task.Run(async () =>
         {
-            _result = TransactionService.Transfer(_Model.DebtorEmail, _creditorEmail, _Model.Amount);
-            _transactions = TransactionService.GetTransactionHistory(_creditorEmail, _selectedPage, _pageCount);
-            _totalPages = TransactionService.GetTransactionsTotalPages(_creditorEmail, _pageCount);
+            _result = TransactionService.Transfer(_InputModel.DebtorEmail, _creditorEmail, _InputModel.Amount);
 
-            _Model = new TransactionTransferModel();
+            if (_result.Success)
+            {
+                _transactions = TransactionService.GetTransactionHistory(_creditorEmail, _selectedPage, _pageCount);
+                _totalPages = TransactionService.GetTransactionsTotalPages(_creditorEmail, _pageCount);
+            }
+
+            _InputModel = new TransactionTransferModel();
+
             await Task.Delay(1000);
         });
 

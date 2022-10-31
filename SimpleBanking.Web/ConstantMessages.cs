@@ -6,7 +6,7 @@
         public const string ReceiverNotFound = "Account not found. Please enter valid receiver.";
         public const string CreditorNotFound = "Creditor account not found. Please log-in again.";
         public const string SuccessfulTransfer = "Transfer successful";
-        public const string InvalidAmount = "The transfer amount should be more than 0.";
+        public const string InvalidAmount = "The transfer amount should be more than 0.00";
         public const string NoUsers = "No users in the database you can send funds to. Please create another account and try again.";
     }
 }

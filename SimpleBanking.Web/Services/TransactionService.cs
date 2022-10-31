@@ -24,6 +24,8 @@ namespace SimpleBanking.Web.Services
                 return new TransactionResult { Success = false, Message = ConstantMessages.CreditorNotFound, NewBalance = 0.00M };
             if (debtor == null)
                 return new TransactionResult { Success = false, Message = ConstantMessages.ReceiverNotFound, NewBalance = creditor.Balance };
+            if (amount <= 0)
+                return new TransactionResult { Success = false, Message = ConstantMessages.InvalidAmount, NewBalance = creditor.Balance };
 
             // Force update entries to ensure the balance is correct, considering executing multiple transfers at the same time from different clients OR receiving funds at the same time while sending
             _context.Entry(creditor).Reload();
