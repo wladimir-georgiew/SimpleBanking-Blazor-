@@ -15,7 +15,7 @@
 @if (IsUserAuthenticated())
 {
 
-    <EditForm Model="@_InputModel" OnInvalidSubmit="ClearResultMessage">
+    <EditForm OnValidSubmit="InitiateTransfer" Model="@_InputModel" OnInvalidSubmit="ClearResultMessage">
         <DataAnnotationsValidator />
 
         <h5 style="text-align:center; font-weight:bold;">Balance: @_result.NewBalance</h5>
@@ -36,7 +36,7 @@
                   Format="F2" Variant="Variant.Text" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.AttachMoney" />
         <hr />
 
-        <MudButton OnClick="InitiateTransfer" Disabled="@_processing" Variant="Variant.Filled" Color="Color.Primary" EndIcon="@Icons.Material.Filled.Send">
+        <MudButton ButtonType="ButtonType.Submit" Disabled="@_processing" Variant="Variant.Filled" Color="Color.Primary" EndIcon="@Icons.Material.Filled.Send">
             @if (_processing)
             {
                 <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
