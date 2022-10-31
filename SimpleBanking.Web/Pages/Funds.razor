@@ -44,7 +44,7 @@
             }
             else
             {
-                <MudText>Send</MudText>
+                <MudText>Send Funds</MudText>
             }
         </MudButton>
 
@@ -62,6 +62,7 @@
                 <th>Amount</th>
                 <th>Type</th>
                 <th>Date</th>
+                <th>From/To</th>
                 <th></th>
             </tr>
         </thead>
@@ -70,9 +71,10 @@
             {
                 <tr>
                     <td>@transaction.Id</td>
-                    <td style="color: @(transaction.IsIncomingTransfer ? "green" : "red")">@transaction.Amount</td>
+                    <td style="color: @(transaction.IsIncomingTransfer ? "green" : "red")">$@(transaction.Amount)</td>
                     <td>@transaction.Type</td>
                     <td>@transaction.Date</td>
+                    <td>@transaction.OppositeUserEmail</td>
                     <td>@(transaction.IsIncomingTransfer ? "Incoming" : "Outgoing")</td>
                 </tr>
             }

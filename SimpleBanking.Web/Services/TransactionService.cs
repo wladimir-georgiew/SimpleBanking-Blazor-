@@ -74,7 +74,17 @@ namespace SimpleBanking.Web.Services
                 .OrderByDescending(x => x.Date)
                 .Skip(pageCount * (pageNumber - 1))
                 .Take(pageCount)
-                .Select(x => GetTransactionHistoryFromTransaction(x, x.DebtorId == user.Id ? true : false))
+                .Select(transaction => new TransactionHistory
+                {
+                    Id = transaction.Id,
+                    Amount = transaction.Amount,
+                    Date = transaction.Date.ToString("g"),
+                    Type = transaction.Type.ToString(),
+                    IsIncomingTransfer = transaction.DebtorId == user.Id ? true : false,
+                    OppositeUserEmail = transaction.DebtorId == user.Id
+                                            ? (transaction.Creditor != null ? transaction.Creditor.Email : "")
+                                            : transaction.Debtor.Email,
+                })
                 .ToArray();
 
             return transactions;
@@ -90,18 +100,6 @@ namespace SimpleBanking.Web.Services
 
             var totalPages = (int)Math.Ceiling((double)transactionsCount / pageCount);
             return totalPages;
-        }
-
-        private static TransactionHistory GetTransactionHistoryFromTransaction(Transaction transaction, bool isIncoming)
-        {
-            return new TransactionHistory
-            {
-                Id = transaction.Id,
-                Amount = transaction.Amount,
-                Date = transaction.Date.ToString("g"),
-                Type = transaction.Type.ToString(),
-                IsIncomingTransfer = isIncoming,
-            };
         }
     }
 }
