@@ -35,7 +35,6 @@ namespace SimpleBanking.Web
             builder.Services.AddRazorPages();
             builder.Services.AddServerSideBlazor();
             builder.Services.AddScoped<AuthenticationStateProvider, RevalidatingIdentityAuthenticationStateProvider<ApplicationUser>>();
-            builder.Services.AddSingleton<WeatherForecastService>();
             builder.Services.AddTransient<ITransactionService, TransactionService>();
             builder.Services.AddMudServices();
 
