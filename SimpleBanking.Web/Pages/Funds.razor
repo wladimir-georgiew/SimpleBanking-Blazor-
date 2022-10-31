@@ -21,27 +21,22 @@
         <h5 style="text-align:center; font-weight:bold;">Balance: @_result.NewBalance</h5>
         <hr />
 
-        <div class="label-input-wrapper">
-            <label class="label-input">Transfer Funds To:</label>
-            <input class="label-input" onchange="@SetDebtorEmail" placeholder="Search user.." type="text" list="user-search" />
-        </div>
+        <MudAutocomplete Class="label-input-wrapper"
+                     Label="Select receiver email"
+                     @bind-Value="_InputModel.DebtorEmail"
+                     SearchFunc="@SearchReceiverEmail"
+                     T="string"
+                     Margin="Margin.Normal" Dense="false" Variant="Variant.Outlined" ShowProgressIndicator="true" />
         <hr />
 
-        <datalist id="user-search">
-            @if (_userEmails.Any())
-            {
-                @foreach (var email in _userEmails)
-                {
-                    <option value="@email">@email</option>
-                }
-            }
-        </datalist>
-
-        <MudTextField Class="label-input-wrapper" Placeholder="0.00" Format="F2" @bind-Value="_InputModel.Amount" Label="Amount" Variant="Variant.Text" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.AttachMoney" />
-
+        <MudTextField Class="label-input-wrapper"
+                  Label="Amount"
+                  @bind-Value="_InputModel.Amount"
+                  Placeholder="0.00"
+                  Format="F2" Variant="Variant.Text" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.AttachMoney" />
         <hr />
 
-        <MudButton Disabled="@_processing" OnClick="InitiateTransfer" Variant="Variant.Filled" Color="Color.Primary" EndIcon="@Icons.Material.Filled.Send">
+        <MudButton OnClick="InitiateTransfer" Disabled="@_processing" Variant="Variant.Filled" Color="Color.Primary" EndIcon="@Icons.Material.Filled.Send">
             @if (_processing)
             {
                 <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
@@ -85,7 +80,7 @@
     </table>
 
     <div style="text-align:center;">
-        <MudPagination Variant="Variant.Filled" Color="Color.Primary" Count="@_totalPages" SelectedChanged="@OnPageChange" />
+        <MudPagination SelectedChanged="@OnPageChange" Count="@_totalPages" Variant="Variant.Filled" Color="Color.Primary" />
     </div>
 }
 else
@@ -128,7 +123,7 @@ else
 
         _result.NewBalance = creditor.Balance;
 
-        _userEmails = UserManager.Users.Where(x => x.Email != creditorName).Select(x => x.Email).ToList();
+        _userEmails = UserManager.Users.Where(x => x.Email != creditorName).Select(x => x.Email).ToArray();
         _transactions = TransactionService.GetTransactionHistory(_creditorEmail, 1, _pageCount);
         _totalPages = TransactionService.GetTransactionsTotalPages(_creditorEmail, _pageCount);
 
@@ -136,11 +131,6 @@ else
         {
             _result.Message = ConstantMessages.NoUsers;
         }
-    }
-
-    private void SetDebtorEmail(ChangeEventArgs e)
-    {
-        _InputModel.DebtorEmail = e.Value.ToString();
     }
 
     async Task InitiateTransfer()
@@ -181,5 +171,13 @@ else
     {
         _selectedPage = pageNumber;
         _transactions = TransactionService.GetTransactionHistory(_creditorEmail, pageNumber, _pageCount);
+    }
+
+    private async Task<IEnumerable<string>> SearchReceiverEmail(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return _userEmails.Take(5);
+
+        return _userEmails.Where(x => x.Contains(value, StringComparison.InvariantCultureIgnoreCase)).Take(5);
     }
 }
