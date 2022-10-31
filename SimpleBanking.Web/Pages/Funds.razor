@@ -54,7 +54,11 @@
         </div>
     </EditForm>
 
+
     <h4 style="text-align:center;">Transaction History</h4>
+    <div style="width: 30%;">
+        <MudDateRangePicker @bind-DateRange="DateRangeHandler" DisableToolbar="true" Label="Range"  />
+    </div>
     <table class="table">
         <thead>
             <tr>
@@ -92,12 +96,14 @@ else
 
 
 @code {
+    // Default range is the transactions from 30 days ago
+    private DateRange _dateRange = new DateRange(DateTime.UtcNow.AddDays(-30), DateTime.UtcNow);
     private bool _processing = false;
 
     // Pagination
     private int _totalPages = 1;
     private int _selectedPage = 1;
-    private int _pageCount = 7;
+    private int _pageCount = 5;
 
     // Auth
     private AuthenticationState _authState;
@@ -109,6 +115,17 @@ else
 
     private ICollection<string> _userEmails = new HashSet<string>();
     private ICollection<TransactionHistory> _transactions = new HashSet<TransactionHistory>();
+
+    public DateRange DateRangeHandler
+    {
+        get { return _dateRange; }
+        set
+        {
+            _dateRange = value;
+            SetTransactionHistory(value.Start, value.End);
+            SetTotalPages();
+        }
+    }
 
     protected async override Task OnInitializedAsync()
     {
@@ -126,8 +143,8 @@ else
         _result.NewBalance = creditor.Balance;
 
         _userEmails = UserManager.Users.Where(x => x.Email != creditorName).Select(x => x.Email).ToArray();
-        _transactions = TransactionService.GetTransactionHistory(_creditorEmail, 1, _pageCount);
-        _totalPages = TransactionService.GetTransactionsTotalPages(_creditorEmail, _pageCount);
+        SetTransactionHistory(_dateRange.Start, _dateRange.End);
+        SetTotalPages();
 
         if (!_userEmails.Any())
         {
@@ -145,8 +162,8 @@ else
 
             if (_result.Success)
             {
-                _transactions = TransactionService.GetTransactionHistory(_creditorEmail, _selectedPage, _pageCount);
-                _totalPages = TransactionService.GetTransactionsTotalPages(_creditorEmail, _pageCount);
+                SetTransactionHistory(_dateRange.Start, _dateRange.End, _selectedPage);
+                SetTotalPages();
             }
 
             _InputModel = new TransactionTransferModel();
@@ -172,7 +189,7 @@ else
     private void OnPageChange(int pageNumber)
     {
         _selectedPage = pageNumber;
-        _transactions = TransactionService.GetTransactionHistory(_creditorEmail, pageNumber, _pageCount);
+        SetTransactionHistory(_dateRange.Start, _dateRange.End, pageNumber);
     }
 
     private async Task<IEnumerable<string>> SearchReceiverEmail(string value)
@@ -181,5 +198,15 @@ else
             return _userEmails.Take(5);
 
         return _userEmails.Where(x => x.Contains(value, StringComparison.InvariantCultureIgnoreCase)).Take(5);
+    }
+
+    private void SetTransactionHistory(DateTime? dateStart, DateTime? dateEnd, int pageNumber = 1)
+    {
+        _transactions = TransactionService.GetTransactionHistory(_creditorEmail, pageNumber, _pageCount, dateStart, dateEnd);
+    }
+
+    private void SetTotalPages()
+    {
+        _totalPages = TransactionService.GetTransactionsTotalPages(_creditorEmail, _pageCount, _dateRange.Start, _dateRange.End);
     }
 }

@@ -65,12 +65,11 @@ namespace SimpleBanking.Web.Services
             return new TransactionResult { Success = true, Message = ConstantMessages.SuccessfulTransfer, NewBalance = creditor.Balance };
         }
 
-        public ICollection<TransactionHistory> GetTransactionHistory(string userEmail, int pageNumber, int pageCount)
+        public ICollection<TransactionHistory> GetTransactionHistory(string userEmail, int pageNumber, int pageCount, DateTime? startDate, DateTime? endDate)
         {
             var user = _context.Users.First(x => x.Email == userEmail);
 
-            var transactions = _context.Transactions
-                .Where(x => x.DebtorId == user.Id || x.CreditorId == user.Id)
+            var transactions = GetTransactionQuery(user.Id, startDate, endDate)
                 .OrderByDescending(x => x.Date)
                 .Skip(pageCount * (pageNumber - 1))
                 .Take(pageCount)
@@ -90,16 +89,20 @@ namespace SimpleBanking.Web.Services
             return transactions;
         }
 
-        public int GetTransactionsTotalPages(string userEmail, int pageCount)
+        public int GetTransactionsTotalPages(string userEmail, int pageCount, DateTime? startDate, DateTime? endDate)
         {
             var user = _context.Users.First(x => x.Email == userEmail);
+            var transactionsCount = GetTransactionQuery(user.Id, startDate, endDate).Count();
 
-            var transactionsCount = _context.Transactions
-                .Where(x => x.DebtorId == user.Id || x.CreditorId == user.Id)
-                .Count();
+            return (int)Math.Ceiling((double)transactionsCount / pageCount);
+        }
 
-            var totalPages = (int)Math.Ceiling((double)transactionsCount / pageCount);
-            return totalPages;
+        private IQueryable<Transaction> GetTransactionQuery(string userId, DateTime? startDate, DateTime? endDate)
+        {
+            return _context.Transactions
+                    .Where(x => (x.DebtorId == userId || x.CreditorId == userId) &&
+                                               x.Date > startDate &&
+                                               x.Date < endDate!.Value.AddDays(1));
         }
     }
 }
