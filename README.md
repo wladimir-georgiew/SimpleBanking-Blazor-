@@ -1,4 +1,4 @@
-Demo project with Blazor Server App, demonstrating simple banking interactions and server-sided pagination.
+# :movie_camera: Preview
 
 https://user-images.githubusercontent.com/61605749/199111248-0e34711b-05e2-4e4c-98c6-05e6434a2fad.mp4
 
